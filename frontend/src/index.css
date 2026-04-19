@@ -159,6 +159,52 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
+/* INTERACTIVIDAD CARDS */
+.interactive-card {
+  cursor: pointer;
+  user-select: none;
+}
+.dimmed-card {
+  opacity: 0.35;
+  filter: grayscale(100%);
+  transform: scale(0.98);
+}
+.selected-card {
+  transform: translateY(-6px) scale(1.02);
+  background-color: #162032;
+  z-index: 10;
+}
+
+/* RESET BUTTON */
+.active-filters {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+  animation: fadeIn 0.3s ease;
+}
+.clear-filter-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+.clear-filter-btn:hover {
+  background: #1f2937;
+  border-color: #ffcc00;
+  color: #ffcc00;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* CHARTS ROW */
 .charts-row {
   display: grid;

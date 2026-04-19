@@ -3,8 +3,7 @@ version: '3.8'
 services:
   redis-clima:
     build: .
-    # Reemplaza 'tu_usuario_dockerhub' por tu nombre de usuario real de Docker Hub
-    image: tu_usuario_dockerhub/redis-clima-iot:latest
+    image: juanbeltran09/redis-clima-iot:latest
     container_name: redis-clima-iot
     ports:
       - "6379:6379"

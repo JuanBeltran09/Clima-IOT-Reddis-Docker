@@ -15,8 +15,11 @@ function App() {
   const [sensorData, setSensorData] = useState({});
   const [isConnected, setIsConnected] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  
+  // Nuevo Estado: Ciudad Seleccionada
+  const [selectedCity, setSelectedCity] = useState(null); // null = Vista General
 
-  // Reloj superior
+  // Reloj superior principal
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
     return () => clearInterval(timer);
@@ -29,13 +32,20 @@ function App() {
     socket.on('disconnect', () => setIsConnected(false));
 
     socket.on('nuevo_clima', (data) => {
-      // Usamos la HORA LOCAL exacta del navegador al recibir el dato, 
-      // solventando el intervalo largo/desconocido de la API origen.
-      data.localTime = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute:'2-digit', second:'2-digit' });
+      const now = Date.now();
+      
+      // Añadimos marca de tiempo real computada en el navegador para precisión milimétrica
+      data.receivedAt = now;
+      // Formateo exigido: HH:mm sin segundos
+      data.localTime = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute:'2-digit' });
       
       setSensorData(prev => {
         const history = prev[data.name] || [];
-        const newHistory = [...history, data].slice(-20); // Guardar los ultimos 20
+        const fifteenMinutesAgo = now - (15 * 60 * 1000); // Exáctos 15 minutos de ventana de tiempo
+        
+        // Ventana dinámica algorítmica: Filtrar para eliminar automáticamente los datos más antiguos a 15 mins
+        const newHistory = [...history, data].filter(d => d.receivedAt >= fifteenMinutesAgo);
+        
         return { ...prev, [data.name]: newHistory };
       });
     });
@@ -43,9 +53,10 @@ function App() {
     return () => socket.disconnect();
   }, []);
 
-  const cities = Object.keys(sensorData);
+  const allCities = Object.keys(sensorData);
+  // Determina qué ciudades dibujar según si hay una tarifa aislada o vista global activa
+  const displayCities = selectedCity ? [selectedCity] : allCities;
   
-  // Colores dedicados (simulando los vistos en la imagen de referencia)
   const cityColors = {
     'Bogotá': '#ff7a00',
     'Medellín': '#00d2ff',
@@ -54,24 +65,25 @@ function App() {
   };
   const fallbackColors = ['#00f0ff', '#ff007f', '#8a2be2', '#00ff88'];
 
-  const buildChartData = (label, dataKey, baseColorHex) => {
+  // Funcion de Ensamblaje Gráfico
+  const buildChartData = (label, dataKey) => {
     let labels = [];
-    if (cities.length > 0 && sensorData[cities[0]]) {
-      labels = sensorData[cities[0]].map(d => d.localTime);
+    if (displayCities.length > 0 && sensorData[displayCities[0]]) {
+      labels = sensorData[displayCities[0]].map(d => d.localTime);
     }
 
-    const datasets = cities.map((city, i) => {
+    const datasets = displayCities.map((city, i) => {
       const color = cityColors[city] || fallbackColors[i % fallbackColors.length];
       return {
         label: city,
         data: sensorData[city].map(d => d[dataKey]),
         borderColor: color,
-        backgroundColor: color + '1A', // Relleno con transparencia leve
-        borderWidth: 2,
-        pointRadius: 2,
+        backgroundColor: color + '2A', // Ligera opacidad para el fill visual
+        borderWidth: selectedCity ? 3 : 2, // Lineas más gruesas si vemos solo 1
+        pointRadius: selectedCity ? 4 : 2, // Puntos más notorios en modo aislado
         pointBackgroundColor: color,
-        fill: label === 'Temperatura' ? false : true, // La temperatura sin relleno según lo visual
-        tension: 0.1 // Interpolar mas recto
+        fill: label === 'Temperatura' ? false : true,
+        tension: 0.1
       };
     });
 
@@ -82,25 +94,25 @@ function App() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { display: false } // Escondemos las labels porque el mapa visual lo hace evidente
+      legend: { display: false } 
     },
     scales: {
       x: { 
-        ticks: { color: '#5b6b84', font: { size: 9, family: 'JetBrains Mono' } }, 
+        ticks: { color: '#5b6b84', font: { size: 11, family: 'JetBrains Mono' } }, 
         grid: { color: 'rgba(255,255,255,0.04)' } 
       },
       y: { 
-        ticks: { color: '#5b6b84', font: { size: 9, family: 'JetBrains Mono' } }, 
+        ticks: { color: '#5b6b84', font: { size: 11, family: 'JetBrains Mono' } }, 
         grid: { color: 'rgba(255,255,255,0.04)' } 
       }
     }
   };
 
+  // El heatmap se mantendrá combinado siempre porque un mapa con solo 1 punto no daría perspectiva espacial
   const heatmapPoints = useMemo(() => {
-    return cities.map(city => {
+    return allCities.map(city => {
       const history = sensorData[city];
       const latest = history[history.length - 1];
-      // Intensidad de 0 a 1 calculada por el calor (Temp. max ~35C)
       let intensity = Math.max(0, Math.min(1, (latest.temperature - 5) / 30));
       return {
         lat: latest.coords.lat,
@@ -108,7 +120,7 @@ function App() {
         intensity: intensity
       };
     });
-  }, [sensorData, cities]);
+  }, [sensorData, allCities]);
 
   return (
     <div className="dashboard-container">
@@ -118,25 +130,33 @@ function App() {
           <span className="icon">🌡️</span>
           <div>
             <h1>IoT Climate Monitor</h1>
-            <p>REDIS PUB/SUB • OPEN-METEO</p>
+            <p>REDIS PUB/SUB • <span style={{color: selectedCity ? '#ffcc00' : '#00d2ff'}}>{selectedCity ? `TRACKING EXCLUSIVO: ${selectedCity.toUpperCase()}` : 'OVERVIEW GLOBAL COMBINADO'}</span></p>
           </div>
         </div>
         <div className="nav-status">
           <span className={`status-dot ${isConnected ? 'live' : 'dead'}`}></span>
           <span className="status-text">{isConnected ? 'EN VIVO' : 'DESCONECTADO'}</span>
-          <span className="time-text">Última actualización: {currentTime}</span>
+          <span className="time-text">🕒 {currentTime}</span>
         </div>
       </header>
 
-      {/* Tarjetas Superiores */}
+      {/* Tarjetas Superiores Interactivas (Seleccionables) */}
       <div className="summary-row">
-        {cities.map((city, index) => {
+        {allCities.map((city) => {
           const latest = sensorData[city][sensorData[city].length - 1];
+          const isSelected = selectedCity === city;
+          const isDimmed = selectedCity !== null && !isSelected;
+          
           return (
-            <div className="summary-card" key={city}>
+            <div 
+              className={`summary-card interactive-card ${isSelected ? 'selected-card' : ''} ${isDimmed ? 'dimmed-card' : ''}`}
+              key={city} 
+              onClick={() => setSelectedCity(city)}
+              style={isSelected ? {borderColor: cityColors[city], boxShadow: `0 0 15px ${cityColors[city]}40`} : {}}
+            >
               <div className="card-header">
                 <span className="city-name" style={{color: cityColors[city]}}>◉ {city.toUpperCase()}</span>
-                <span className="live-badge">LIVE</span>
+                {isSelected ? <span className="live-badge" style={{borderColor: '#ffcc00', color: '#ffcc00'}}>ISOLATED</span> : <span className="live-badge">LIVE</span>}
               </div>
               <div className="card-body">
                 <h2 className="main-temp">{latest.temperature.toFixed(1)}°</h2>
@@ -149,16 +169,25 @@ function App() {
           );
         })}
       </div>
-
-      {cities.length === 0 && (
-        <div className="loading-state">Esperando señales de telemetría de los sensores IoT...</div>
+      
+      {/* Boton regreso a vista global condicional */}
+      {selectedCity && (
+        <div className="active-filters">
+          <button className="clear-filter-btn" onClick={() => setSelectedCity(null)}>
+             ⭯ Regresar a Vista General (Todas las Ciudades)
+          </button>
+        </div>
       )}
 
-      {/* Gráficas Base */}
+      {allCities.length === 0 && (
+        <div className="loading-state">Captando radio-telemetría IoT desde Redis...</div>
+      )}
+
+      {/* Gráficas con Historial Dinámico de Ventana (15 mins) */}
       <div className="charts-row">
         <div className="chart-card">
           <div className="chart-title">
-            <span style={{color: '#ff7a00'}}>🌡️ TEMPERATURA </span>
+            <span style={{color: '#ff7a00'}}>🌡️ TEMPERATURA HISTÓRICA (VENTANA 15 MIN)</span>
           </div>
           <div className="chart-content">
             <Line data={buildChartData('Temperatura', 'temperature')} options={commonOptions} />
@@ -167,7 +196,7 @@ function App() {
 
         <div className="chart-card">
           <div className="chart-title">
-             <span style={{color: '#00d2ff'}}>💧 HUMEDAD</span>
+             <span style={{color: '#00d2ff'}}>💧 HUMEDAD HISTÓRICA (VENTANA 15 MIN)</span>
           </div>
           <div className="chart-content">
             <Line data={buildChartData('Humedad', 'humidity')} options={commonOptions} />
@@ -176,7 +205,7 @@ function App() {
 
         <div className="chart-card">
           <div className="chart-title">
-            <span style={{color: '#c255ff'}}>📊 PRESIÓN</span>
+            <span style={{color: '#c255ff'}}>📊 PRESIÓN ATMOSFÉRICA</span>
           </div>
           <div className="chart-content">
             <Line data={buildChartData('Presión', 'pressure')} options={commonOptions} />
@@ -184,11 +213,12 @@ function App() {
         </div>
       </div>
 
-      {/* Mapa de Calor */}
+      {/* Mapa de Calor Inferior */}
       <div className="map-row">
         <div className="chart-card map-card">
-          <div className="chart-title map-title">
-            <span>🌍 HEATMAP • TEMPERATURA POR SENSOR</span>
+          <div className="chart-title map-title" style={{display:'flex', justifyContent:'space-between'}}>
+            <span>🌍 HEATMAP • VISTA DE CALOR COMBINADA</span>
+            <span style={{fontSize: '0.65rem', color: '#6b7a94', textTransform:'none'}}>*El mapa termal se mantiene global estático</span>
           </div>
           <div className="map-frame">
             <MapContainer center={[4.5709, -74.2973]} zoom={5} style={{ height: '100%', width: '100%' }}>
