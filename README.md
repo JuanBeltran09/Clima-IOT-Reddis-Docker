@@ -1,76 +1,85 @@
-# Simulación de Sistema IoT - Clima en Tiempo Real 🌍🌡️
+# Simulación de Sistema IoT - Clima en Tiempo Real 🌦️
 
-Este proyecto tiene como objetivo simular un ecosistema **IoT (Internet of the Things)**. Estamos capturando datos climáticos "en vivo" desde múltiples sensores geolocalizados, procesándolos mediante una arquitectura basada en eventos a través de **Redis**, y apuntando a visualizarlos en un dashboard moderno web.
+Este documento explica de forma detallada la construcción y funcionamiento de nuestro sistema IoT diseñado para capturar, transmitir y visualizar datos de clima utilizando **Redis** como Message Broker. 
 
-## 🏗️ Arquitectura General
+## 🏗️ Estructura del Proyecto
 
-El proyecto ha sido dividido deliberadamente en tres capas independientes, siguiendo buenas prácticas empresariales (lo que permitirá desplegar el Frontend en plataformas como Vercel y mantener el backend seguro):
+Hemos dividido el proyecto en tres capas fundamentales para garantizar escalar e implementar de forma sencilla en entornos cloud reales (ej. Vercel, AWS):
 
-1. **`redis-server/`**: Contiene la infraestructura de la Base de Datos en Memoria (Docker). Actúa como nuestro Intermediario de Mensajes (Message Broker).
-2. **`backend/`**: Capa lógica construida en Node.js. Por el momento aloja a nuestro **Publisher** (publicador), el script que actúa como los sensores físicos.
-3. **`frontend/`**: Capa visual construida con React (Vite). Será el Dashboard del usuario final.
-
----
-
-## ⚙️ ¿Cómo funciona el Paso 2 (El Publisher y las APIs Generales)?
-
-Para simular hardware IoT del clima, resolvimos construir un script en Node.js (`backend/publisher.js`). 
-
-**1. Selección de API Pública:**
-Se ha optado por utilizar **Open-Meteo**. Las ventajas de esta API sobre alternativas (como OpenWeatherMap) son:
-* **No requiere API Keys:** No hay necesidad de registro ni gestionar tarjetas de crédito / tokens. Es inmediata.
-* **Múltiples variables:** Ofrece Temperatura, Humedad, Presión y Viento por coordenadas geográficas.
-
-**2. Lógica del Publisher (`publisher.js`):**
-El script posee una lista de coordenadas (sensores) estáticas correspondiente a varias ciudades (ej. Bogotá, Medellín). Funciona a través de un ciclo iterativo (`setInterval`) ejecutándose cada `15 segundos`. 
-* Por cada ciclo, consulta las métricas biológicas actuales vía `axios` (Librería HTTP).
-* Estructura los datos en un formato útil (`JSON`).
-* Se conecta localmente al puerto de nuestro **Redis Container** y hace un **Publish**. Publicar en el canal (Pub/Sub) significa "Lanzar el dato al aire para que cualquiera suscrito a 'clima_updates' lo tome inmediatamente".
+1. **`redis-server/`**: La infraestructura Base de Datos en memoria instalada en Docker.
+2. **`backend/`**: El núcleo lógico (Node.js). Aquí viven los scripts **Publisher** (que actúan como sensores) y el **Subscriber** (API WebSockets puente).
+3. **`frontend/`**: La interfaz gráfica desarrollada en Vite + React (para visualización web final).
 
 ---
 
-## 🚀 Guía de Inicialización (Paso a Paso)
+## 🛠️ Punto 3: El Publisher (Simulador de Sensores)
 
-Sigue estos comandos para echar a andar las herramientas creadas durante el Paso 2:
+**Ubicación:** `backend/publisher.js`
 
-### Requisito Previo
-Asegúrate de que la base de datos Redis esté corriendo en segundo plano:
+El reto solicitaba crear un script que cada cierta cantidad de segundos ("X") consultara de una API gratuita variables de clima reales (Temperatura, Humedad, Velocidad de viento) emulando hardware localizado en distintos puntos geográficos.
+
+### ¿Cómo se hizo y cómo funciona?
+1. **Librerías principales:** Utilizamos `axios` para hacer las peticiones HTTP a internet y la librería oficial de `redis` para NodeJS.
+2. **Ubicaciones Geográficas:** Definimos un arreglo estático en el código con coordenadas reales de 4 ciudades (Bogotá, Medellín, Cali, Barranquilla). Actúan como el "Hardware IoT".
+3. **Petición a API:** Empleamos la API gratuita de **Open-Meteo**. No requiere autenticación por Token/Keys, reduciendo fricción, pero ofrece todas las métricas solicitadas con enorme precisión.
+4. **Ciclo (Loop):** Utilizamos la función predeterminada de NodeJS `setInterval()` configurada cada **15 segundos**. En cada intervalo, el programa realiza una petición a Open-Meteo tomando la latitud y longitud. 
+5. **Enviando a Redis:** Al obtener el clima actual (JSON), usamos el comando `redisClient.publish('clima_updates', <datos_comprimidos>)`. Esto realiza una distribución en tiempo real ("Pub/Sub"); literalmente arroja los datos a cualquier máquina o script que esté escuchando, y desecha los datos de la memoria inmediata para mantener bajo costo computacional.
+
+---
+
+## 🎧 Punto 4: El Subscriber (Receptor Web y Conector)
+
+**Ubicación:** `backend/subscriber.js`
+
+El reto solicitaba un script "web o Node.js" capaz de interceptar los eventos arrojados por el Publisher dentro de la base de datos de Redis en tiempo real. 
+
+### ¿Cómo se hizo y cómo funciona?
+1. **El Servidor Web (Express + Socket.io):** Levantamos un pequeño servidor web usando *Express.js* en el puerto **4000**. Le dotamos superpoderes con *Socket.io* para ofrecer conexión de **WebSockets**. Los WebSockets son los encargados de mantener túneles abiertos en doble vía con navegadores web, previniendo recargar la página para ver datos frescos.
+2. **La Conexión de Subsistema:** Inicializamos un cliente paralelo de  `redis`. Este cliente tiene una única misión en su existencia a través del comando:
+   ```javascript
+   redisClient.subscribe('clima_updates', (mensaje) => { ... })
+   ```
+3. **Funcionamiento Real:** 
+   - El *Publisher* consulta Open-Meteo e inserta la cadena en Redis.
+   - Redis notifica instantáneamente a nuestro *Subscriber.js*.
+   - El Subscriber decodifica el mensaje y ejecuta `io.emit('nuevo_clima', mensaje)`.
+   - Como resultado final, todos los usuarios o navegadores que tengan abierto tu futuro Frontend de React y Vercel verán los puntajes de Temperatura y Humedad actualizarse como por arte de magia y al unísono.
+
+---
+
+## 🚀 Paso a Paso: Guía de Inicialización
+
+Para ver operar el ecosistema (y probar tanto el Paso 3 como el Paso 4 en tu propia máquina), sigue estos pasos:
+
+### 1. Activar el cerebro (Redis)
+Tu contenedor de Redis debe estar online.
 ```powershell
 cd redis-server
 docker-compose up -d
 cd ..
 ```
 
-### 📡 Levantar el Backend (El Simulador IoT)
-El backend requiere sus propias librerías (como el conector a redis y axios) para funcionar.
+### 2. Inicializar el proyecto Backend (Node)
+Si es la primera vez que clonas o abres el proyecto, instala las dependencias (dentro de la carpeta backend):
+```powershell
+cd backend
+npm install
+```
 
-1. Navega a la carpeta del backend.
-   ```powershell
-   cd backend
-   ```
-2. Instala los `node_modules` (descarga las dependencias declaradas).
-   ```powershell
-   npm install
-   ```
-3. Ejecuta el script simulador.
-   ```powershell
-   node publisher.js
-   ```
-*(Nota: Verás en consola que comienza a hacer peticiones a internet y a confirmar que los datos se publican en Redis exitosamente).* Dejar corriendo en esa terminal.
+### 3. Iniciar el Subscriber (El Orejotas 🎧)
+Te sugiero iniciar primero el que "escucha" y que habilita el servidor WebSockets para el Frontend:
+Abre una terminal en la carpeta de `backend` y corre:
+```powershell
+node subscriber.js
+```
+*(Verás un mensaje diciendo que está conectado a Redis y al Puerto 4000 de Sockets).*
 
-### 💻 Levantar el Frontend (El Dashboard React)
-Al igual que el backend, la web ha sido configurada como su propio microcosmos.
+### 4. Iniciar el Publisher (Los Sensores 📡)
+Abre **otra pestaña o ventana** de consola, dirígete nuevamente a `backend` y enciende la simulación:
+```powershell
+node publisher.js
+```
 
-1. Abre una **nueva ventana/pestaña** de terminal y navega hasta el frontend.
-   ```powershell
-   cd frontend
-   ```
-2. Descarga sus múltiples dependencias (Librerías de gráficas como `chart.js`, React, Vite, `leaflet` para los mapas).
-   ```powershell
-   npm install
-   ```
-3. Inicia el servidor de desarrollo en caliente (Fast Refresh).
-   ```powershell
-   npm run dev
-   ```
-4. Podrás visualizar la página esqueleto accediendo por tu navegador a `http://localhost:5173`.
+A partir de este instante, verás en la consola del *Publisher* confirmando las peticiones a la nube, y en la consola paralela del *Subscriber* observando exactamente en tiempo real cuando llega el paquete empujado por Redis.
+
+¡Arquitectura Pub/Sub asíncrona completada!
