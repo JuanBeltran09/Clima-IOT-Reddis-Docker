@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
-import 'leaflet.heat';
 import L from 'leaflet';
+
+// El truco definitivo para entornos de React/Vite + Leaflet Heat
+window.L = L;
+import 'leaflet.heat';
 
 export default function HeatmapLayer({ data }) {
   const map = useMap();
@@ -9,18 +12,30 @@ export default function HeatmapLayer({ data }) {
   useEffect(() => {
     if (!data || data.length === 0) return;
 
-    // Convertir los datos a formato de Leaflet Heat: [lat, lng, intensidad]
+    // Eliminar las capas de calor viejas antes de redibujar para evitar saturación de RAM
+    map.eachLayer((layer) => {
+      // Identificamos internamente al plugin heat
+      if (layer._heat) {
+        map.removeLayer(layer);
+      }
+    });
+
     const heatData = data.map(d => [
       d.lat,
       d.lon,
-      d.intensity // Un valor entre 0 y 1, por ejemplo calculando la temp máxima.
+      d.intensity * 2 // Se extrapola x2 la intensidad artificialmente para que destaque al ser pocos sensores
     ]);
 
     const heatLayer = L.heatLayer(heatData, {
-      radius: 35,
+      radius: 45, // Radio amplio estilo manchas
       blur: 25,
-      maxZoom: 10,
-      gradient: { 0.2: 'blue', 0.4: 'cyan', 0.6: 'lime', 0.8: 'yellow', 1.0: 'red' }
+      maxZoom: 8,
+      gradient: {
+        0.2: '#00d2ff', // Frio 
+        0.5: '#00ff88', // Templado
+        0.7: '#ffcc00', // Calido
+        1.0: '#ff0055'  // Ardiente
+      }
     });
 
     heatLayer.addTo(map);

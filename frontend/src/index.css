@@ -1,147 +1,233 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
 :root {
-  --bg-color: #0b0f19;
+  --bg-main: #0a0e17;
+  --bg-card: #101623;
+  --border-color: #1f2937;
   --text-main: #ffffff;
-  --text-muted: #8b9bb4;
-  --glass-bg: rgba(20, 27, 45, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  
-  --accent-blue: #00f0ff;
-  --accent-purple: #8a2be2;
-  --accent-pink: #ff007f;
+  --text-muted: #6b7a94;
+  --accent-cyan: #00d2ff;
+  --accent-orange: #ff7a00;
+  --accent-purple: #c255ff;
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Outfit', sans-serif;
 }
 
 body {
-  background-color: var(--bg-color);
+  background-color: var(--bg-main);
   color: var(--text-main);
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.07), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(138, 43, 226, 0.07), transparent 25%);
+  font-family: 'Inter', sans-serif;
   min-height: 100vh;
+  /* El patrón cuadriculado de fondo estilo UI Tech */
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
   overflow-x: hidden;
 }
 
 .dashboard-container {
-  padding: 2rem;
-  max-width: 1400px;
+  padding: 1.5rem 3rem;
+  max-width: 1800px;
   margin: 0 auto;
 }
 
-.header {
-  text-align: center;
-  margin-bottom: 3rem;
-}
-
-.header h1 {
-  font-size: 3rem;
-  font-weight: 800;
-  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
-
-.header p {
-  color: var(--text-muted);
-  font-size: 1.1rem;
-}
-
-.status-badge {
-  display: inline-flex;
+/* TOP NAV */
+.top-nav {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
-  background: var(--glass-bg);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  border: 1px solid var(--glass-border);
-  margin-top: 1rem;
-  font-size: 0.9rem;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1rem;
 }
 
-.pulse {
-  width: 10px;
-  height: 10px;
-  background-color: #00ff00;
-  border-radius: 50%;
-  box-shadow: 0 0 10px #00ff00;
-  animation: pulsing 1.5s infinite alternate;
-}
-
-@keyframes pulsing {
-  0% { transform: scale(0.95); opacity: 0.7; }
-  100% { transform: scale(1.1); opacity: 1; }
-}
-
-.grid-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-}
-
-@media (min-width: 1024px) {
-  .grid-layout {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: 24px;
-  padding: 1.5rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s ease, border-color 0.3s ease;
-}
-
-.glass-card:hover {
-  transform: translateY(-5px);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.card-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: var(--text-main);
+.nav-title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.chart-container {
-  position: relative;
-  height: 300px;
+.nav-title .icon {
+  font-size: 2.2rem;
+  background: var(--bg-card);
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.nav-title h1 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.nav-title p {
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.status-dot.live { background-color: #00ff88; box-shadow: 0 0 8px #00ff88; }
+.status-dot.dead { background-color: #ff0055; }
+.status-text { letter-spacing: 1px; color: #fff; }
+
+/* SUMMARY CARDS */
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.summary-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.3s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.summary-card:hover {
+  border-color: var(--accent-cyan);
+  background-color: #141c2c;
+  transform: translateY(-2px);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.city-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.live-badge {
+  background: rgba(0, 210, 255, 0.1);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.main-temp {
+  font-size: 2.8rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  letter-spacing: -1px;
+  color: #fff;
+}
+
+.sub-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* CHARTS ROW */
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.chart-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.chart-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.chart-content {
+  height: 220px;
   width: 100%;
 }
 
-.map-container {
+/* MAP ROW */
+.map-row {
+  width: 100%;
+}
+
+.map-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.map-title {
+  padding: 1rem 1.5rem;
+  margin-bottom: 0;
+  background-color: #0d121c;
+  border-bottom: 1px solid var(--border-color);
+  color: #fff;
+}
+
+.map-frame {
   height: 400px;
   width: 100%;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid var(--glass-border);
 }
 
-/* Ajustes oscuros para el mapa de Leaflet */
-.leaflet-container {
-  background-color: #1a1f2e !important;
+.loading-state {
+  text-align: center;
+  padding: 4rem;
+  color: var(--accent-cyan);
+  font-family: 'JetBrains Mono', monospace;
 }
-.leaflet-layer,
-.leaflet-control-zoom-in,
-.leaflet-control-zoom-out,
-.leaflet-control-attribution {
-  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+
+/* LEAFLET TWEAKS OSCUROS */
+.leaflet-container {
+  background-color: #0a0e17 !important;
+}
+.leaflet-control-zoom a {
+  background-color: #1a1f2e !important;
+  color: white !important;
+  border-color: #2a3142 !important;
 }
