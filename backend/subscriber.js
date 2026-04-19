@@ -18,7 +18,7 @@ const io = new Server(server, {
 
 // Configuración de la conexión a Redis
 const redisClient = redis.createClient({
-    url: 'redis://localhost:6379'
+    url: process.env.REDIS_URL || 'redis://localhost:6379'
 });
 
 redisClient.on('error', (err) => console.log('❌ Error en Redis Subscriber:', err));
@@ -37,8 +37,8 @@ async function startSubscriber() {
     });
 }
 
-// Iniciar servidor web y WebSockets en el puerto 4000
-const PORT = 4000;
+// Render inyecta su propio puerto en la variable process.env.PORT
+const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
     console.log(`🚀 Servidor Socket.io corriendo en el puerto ${PORT}`);
     startSubscriber();

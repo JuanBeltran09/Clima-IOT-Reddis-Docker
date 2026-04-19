@@ -10,8 +10,8 @@ import HeatmapLayer from './HeatmapLayer';
 // Registrar componentes de Chart.js
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-// URL del backend (Subscriber)
-const SERVER_URL = 'http://localhost:4000';
+// URL del backend (Renderizado primero por variables de entorno de Vite o Localhost)
+const SERVER_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
 function App() {
   const [sensorData, setSensorData] = useState({});

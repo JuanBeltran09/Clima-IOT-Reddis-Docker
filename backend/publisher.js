@@ -11,7 +11,7 @@ const sensors = [
 
 // Conexión a Redis (Apunta a tu contenedor de Docker)
 const redisClient = redis.createClient({
-    url: 'redis://localhost:6379'
+    url: process.env.REDIS_URL || 'redis://localhost:6379'
 });
 
 redisClient.on('error', (err) => console.log('❌ Error en Redis:', err));
